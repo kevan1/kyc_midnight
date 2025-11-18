@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Loader2 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 
 
@@ -48,12 +49,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#0F0E2A]">
       <Card className="w-full max-w-md bg-[#2E2A5C] border-[rgba(230,231,239,0.12)] rounded-2xl shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto p-4 rounded-2xl bg-[#15DACC]/10 w-fit">
-            <Shield className="w-12 h-12 text-[#15DACC]" />
+          <div className="mx-auto p-4 rounded-2xl  w-fit">
+            <Image
+              src="/logoKeyd.png"   // 👈 cambia al nombre real que estés usando
+              alt="Keyd"
+              width={80}
+              height={80}
+              className="w-14 h-14 object-contain"
+              priority
+            />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-[#E6E7EF]">Inicia sesión</CardTitle>
-            <CardDescription className="text-[#A5A7BF] mt-2">Elige tu método de acceso seguro</CardDescription>
+            <CardTitle className="text-2xl font-bold text-[#E6E7EF]">Login</CardTitle>
           </div>
         </CardHeader>
 

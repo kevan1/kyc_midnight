@@ -15,6 +15,7 @@ function HomePageContent() {
     {
       type: "Identity",
       icon: Shield,
+      image: "/cred3.png",
       title: "Identity Verification",
       description: "Verify your identity with government-issued documents using advanced document verification",
       route: "/verify/identity",
@@ -27,6 +28,7 @@ function HomePageContent() {
     {
       type: "Human",
       icon: User,
+      image: "/cred1.png",
       title: "Human Verification",
       description: "Prove you're human with advanced liveness detection and CAPTCHA verification",
       route: "/verify/human",
@@ -39,6 +41,7 @@ function HomePageContent() {
     {
       type: "Age",
       icon: Calendar,
+      image: "/cred2.png",
       title: "Age Verification",
       description: "Verify your age using zero-knowledge proofs without revealing your date of birth",
       route: "/verify/age",
@@ -116,7 +119,7 @@ function HomePageContent() {
               >
                 {/* Gradient overlay on hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${credential.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-                
+
                 {/* Animated border glow */}
                 <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                   <div className={`absolute inset-0 rounded-lg bg-gradient-to-r ${credential.color} blur-xl opacity-20`} />
@@ -125,10 +128,27 @@ function HomePageContent() {
                 <CardContent className="p-6 md:p-8 relative z-10">
                   {/* Icon and Status */}
                   <div className="flex items-start justify-between mb-6">
-                    <div className={`relative ${credential.iconBg} p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className={`w-8 h-8 ${credential.iconColor} group-hover:scale-110 transition-transform duration-300`} />
-                      <div className={`absolute inset-0 bg-gradient-to-br ${credential.color} opacity-0 group-hover:opacity-20 rounded-2xl transition-opacity duration-300`} />
+                    <div className="relative rounded-2xl overflow-hidden w-40 h-28
+                  group-hover:scale-110 group-hover:rotate-1
+                  transition-all duration-500 ease-out">
+
+                      <img
+                        src={credential.image}
+                        alt={`${credential.type} credential`}
+                        className="object-cover w-full h-full opacity-80
+                 group-hover:opacity-100 group-hover:blur-[1px]
+                 group-hover:brightness-110
+                 transition-all duration-700 ease-out"
+                      />
+
+                      {/* Fade overlay */}
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-br ${credential.color}
+                  opacity-0 group-hover:opacity-30
+                  transition-opacity duration-500`}
+                      />
                     </div>
+
                     {getStatusBadge(credential.status)}
                   </div>
 
