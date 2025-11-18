@@ -1,0 +1,186 @@
+import "dotenv/config";
+import * as readline from "readline/promises";
+import { WalletBuilder } from "@midnight-ntwrk/wallet";
+import { findDeployedContract } from "@midnight-ntwrk/midnight-js-contracts";
+import {
+  NetworkId,
+  setNetworkId,
+  getZswapNetworkId,
+  getLedgerNetworkId,
+} from "@midnight-ntwrk/midnight-js-network-id";
+import { createBalancedTx } from "@midnight-ntwrk/midnight-js-types";
+import { Transaction } from "@midnight-ntwrk/ledger";
+import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
+import { WebSocket } from "ws";
+import * as path from "path";
+import * as fs from "fs";
+import * as Rx from "rxjs";
+import { MidnightProviders } from "./providers/midnight-providers.js";
+import { EnvironmentManager } from "./utils/environment.js";
+
+// Fix WebSocket for Node.js environment
+// @ts-ignore
+globalThis.WebSocket = WebSocket;
+
+// Configure for Midnight Testnet
+setNetworkId(NetworkId.TestNet);
+
+async function main() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log("🌙 kyc_credentials CLI\n");
+
+  try {
+    // Validate environment
+    EnvironmentManager.validateEnvironment();
+
+    // Check for deployment file
+    if (!fs.existsSync("deployment.json")) {
+      console.error("❌ No deployment.json found! Run npm run deploy first.");
+      process.exit(1);
+    }
+
+    const deployment = JSON.parse(fs.readFileSync("deployment.json", "utf-8"));
+    console.log(`Contract: ${deployment.contractAddress}\n`);
+
+    const networkConfig = EnvironmentManager.getNetworkConfig();
+    const contractName =
+      deployment.contractName || process.env.CONTRACT_NAME || "kyc-credentials";
+    const walletSeed = process.env.WALLET_SEED!;
+
+    console.log("Connecting to Midnight network...");
+
+    // Build wallet
+    const wallet = await WalletBuilder.buildFromSeed(
+      networkConfig.indexer,
+      networkConfig.indexerWS,
+      networkConfig.proofServer,
+      networkConfig.node,
+      walletSeed,
+      getZswapNetworkId(),
+      "info"
+    );
+
+    wallet.start();
+
+    // Wait for sync
+    await Rx.firstValueFrom(
+      wallet.state().pipe(Rx.filter((s) => s.syncProgress?.synced === true))
+    );
+
+    // Load contract
+    const contractPath = path.join(process.cwd(), "contracts");
+    const contractModulePath = path.join(
+      contractPath,
+      "managed",
+      contractName,
+      "contract",
+      "index.cjs"
+    );
+    const KycCredentialsModule = await import(contractModulePath);
+    const contractInstance = new KycCredentialsModule.Contract({});
+
+    // Create wallet provider
+    const walletState = await Rx.firstValueFrom(wallet.state());
+
+    const walletProvider = {
+      coinPublicKey: walletState.coinPublicKey,
+      encryptionPublicKey: walletState.encryptionPublicKey,
+      balanceTx(tx: any, newCoins: any) {
+        return wallet
+          .balanceTransaction(
+            ZswapTransaction.deserialize(
+              tx.serialize(getLedgerNetworkId()),
+              getZswapNetworkId()
+            ),
+            newCoins
+          )
+          .then((tx) => wallet.proveTransaction(tx))
+          .then((zswapTx) =>
+            Transaction.deserialize(
+              zswapTx.serialize(getZswapNetworkId()),
+              getLedgerNetworkId()
+            )
+          )
+          .then(createBalancedTx);
+      },
+      submitTx(tx: any) {
+        return wallet.submitTransaction(tx);
+      },
+    };
+
+    // Configure providers
+    const providers = MidnightProviders.create({
+      contractName,
+      walletProvider,
+      networkConfig,
+    });
+
+    // Connect to contract
+    const deployed: any = await findDeployedContract(providers, {
+      contractAddress: deployment.contractAddress,
+      contract: contractInstance,
+      privateStateId: "kycCredentialState",
+      initialPrivateState: {},
+    });
+
+    console.log("✅ Connected to contract\n");
+
+    // Main menu loop
+    let running = true;
+    while (running) {
+      console.log("--- Menu ---");
+      console.log("1. Register identity credential (placeholder)");
+      console.log("2. View last ledger snapshot (placeholder)");
+      console.log("3. Exit");
+
+      const choice = await rl.question("\nYour choice: ");
+
+      switch (choice) {
+        case "1":
+          console.log("\nIdentity registration call is not yet wired to the new circuit.");
+          console.log("Implement contract invocation once the SDK wrapper is updated.\n");
+          break;
+
+        case "2":
+          console.log("\nReading current ledger snapshot (placeholder)...");
+          try {
+            const state = await providers.publicDataProvider.queryContractState(
+              deployment.contractAddress
+            );
+            if (state) {
+              const ledger = KycCredentialsModule.ledger(state.data);
+              console.log("📋 Ledger snapshot:");
+              console.log(JSON.stringify(ledger, null, 2));
+              console.log();
+            } else {
+              console.log("📋 No ledger data found\n");
+            }
+          } catch (error) {
+            console.error("❌ Failed to read message:", error);
+          }
+          break;
+
+        case "3":
+          running = false;
+          console.log("\n👋 Goodbye!");
+          break;
+
+        default:
+          console.log("❌ Invalid choice. Please enter 1, 2, or 3.\n");
+      }
+    }
+
+    // Clean up
+    await wallet.close();
+  } catch (error) {
+    console.error("\n❌ Error:", error);
+  } finally {
+    rl.close();
+  }
+}
+
+main().catch(console.error);

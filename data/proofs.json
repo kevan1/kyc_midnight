@@ -1,0 +1,112 @@
+{
+  "0x035b53a4506dde9bc6c6af58ec6e837be037365d6d7f5531a05039cfcb644549:country": {
+    "proof": {
+      "proof": "zk-proof:country:c9ccadaf5d1c4f3253ab9b2861efbe65fa64a6b4f48593b30338be9f9d68b5ba",
+      "commitment": "0x104f44140f6660520e81bd293fcf5f35efb5d4071a586f4e46a39fda7490532d",
+      "statement": "country == France",
+      "timestamp": "2025-11-17T20:56:10.309Z",
+      "expiresAt": "2026-11-17T20:56:10.310Z"
+    },
+    "expiresAt": "2026-11-17T20:56:11.705Z"
+  },
+  "0x035b53a4506dde9bc6c6af58ec6e837be037365d6d7f5531a05039cfcb644549:captcha": {
+    "proof": {
+      "proof": "zk-proof:captcha:9dff1dfecab60eceb81d440795d660511f40284d2a884199961e116f4e3cd097",
+      "commitment": "0x35c47995a8459c79571a143e0427138c18cc004abc089ad9f7bd6f155804a8c3",
+      "statement": "captcha == passed",
+      "timestamp": "2025-11-17T20:58:46.726Z",
+      "expiresAt": "2026-11-17T20:58:46.726Z"
+    },
+    "expiresAt": "2026-11-17T20:58:47.136Z"
+  },
+  "0x035b53a4506dde9bc6c6af58ec6e837be037365d6d7f5531a05039cfcb644549": {
+    "proof": {
+      "proof": "zk-proof:be468c6a4c72b8f4ef039f37f1a63cacd74a9edd99fa3282103c12316ae0ef7a",
+      "commitment": "0x0f5416e846e1f016910ba1ecb6bc278efc79d9eb092674af7080ef5d53dedfc4",
+      "statement": "age >= 18",
+      "timestamp": "2025-11-17T20:59:57.786Z",
+      "expiresAt": "2026-11-17T20:59:57.786Z"
+    },
+    "expiresAt": "2026-11-17T20:59:58.157Z"
+  },
+  "0x52aacbe08c3c1686debd214fe5d77614555c5e92838a788812951b0c55f4f90f:country": {
+    "proof": {
+      "proof": "zk-proof:country:fcf5504d10d83cec70460b8ee95311ae7537e7d807d0086fa6a747d4a03d723e",
+      "commitment": "0xb22ef16ad58ee6752d58d1b01cbdadbad975dc55e355717013a402f1a1f72119",
+      "statement": "country != France",
+      "timestamp": "2025-11-17T21:13:14.308Z",
+      "expiresAt": "2026-11-17T21:13:14.309Z"
+    },
+    "expiresAt": "2026-11-17T21:13:15.136Z"
+  },
+  "0x52aacbe08c3c1686debd214fe5d77614555c5e92838a788812951b0c55f4f90f:captcha": {
+    "proof": {
+      "proof": "zk-proof:captcha:b89e64477c839fdbcb698b3d2da5f84ceda6a70feae0287eb4df37bad9f0b659",
+      "commitment": "0x8865f276c0972e7edc4c35b4042599f00e3d4d717835d91e48a85058c1f99067",
+      "statement": "captcha == passed",
+      "timestamp": "2025-11-17T21:15:09.542Z",
+      "expiresAt": "2026-11-17T21:15:09.542Z"
+    },
+    "expiresAt": "2026-11-17T21:15:09.554Z"
+  },
+  "0x52aacbe08c3c1686debd214fe5d77614555c5e92838a788812951b0c55f4f90f": {
+    "proof": {
+      "proof": "zk-proof:3d3e64e6ffa32ecb92527775e5121d4062b7768d3e6a32ce7b9b9fbf9542eab5",
+      "commitment": "0x8b96037a7151b5070b6a9aa7ebf8614359174ce547666aff2d12b5cde07f2e69",
+      "statement": "age >= 18",
+      "timestamp": "2025-11-17T21:16:20.924Z",
+      "expiresAt": "2026-11-17T21:16:20.924Z"
+    },
+    "expiresAt": "2026-11-17T21:16:20.941Z"
+  },
+  "0xfc75f63f8c7623dc0f0d11aafe848e58fb1707e305fb3ca24b62b0699e09007a:country": {
+    "proof": {
+      "proof": "zk-proof:country:ee967d3b4103c2effba9bc399f693667774a7ba32876a77c1bef024509677926",
+      "commitment": "0x7ca7efd0dd9fa8afe142d8a4455a74b5c589aa5c85ebc0fbcb1d60f97f3d8e5e",
+      "statement": "country != France",
+      "timestamp": "2025-11-17T21:29:57.491Z",
+      "expiresAt": "2026-11-17T21:29:57.491Z"
+    },
+    "expiresAt": "2026-11-17T21:29:58.218Z"
+  },
+  "0xfc75f63f8c7623dc0f0d11aafe848e58fb1707e305fb3ca24b62b0699e09007a:captcha": {
+    "proof": {
+      "proof": "zk-proof:captcha:ec80c263dee24b56960c234a5592fb71fff6543aa9ea6b5ce53a21a97a395c19",
+      "commitment": "0x1c796918f95aad6f91e7ec1541a73d24426746ae7418e2d6e1146b274a0ba4c3",
+      "statement": "captcha == failed",
+      "timestamp": "2025-11-17T21:31:33.882Z",
+      "expiresAt": "2026-11-17T21:31:33.882Z"
+    },
+    "expiresAt": "2026-11-17T21:31:33.933Z"
+  },
+  "0xfc75f63f8c7623dc0f0d11aafe848e58fb1707e305fb3ca24b62b0699e09007a": {
+    "proof": {
+      "proof": "zk-proof:baa1329405f8e8be497fffc39313fb39984583b24084a30965b4a95d2376039b",
+      "commitment": "0x8de429b3cfe79e3dc8572cac3902606b06fbc3860c0ea87e226bc4204674fd2c",
+      "statement": "age >= 18",
+      "timestamp": "2025-11-17T21:32:52.497Z",
+      "expiresAt": "2026-11-17T21:32:52.497Z"
+    },
+    "expiresAt": "2026-11-17T21:32:52.591Z"
+  },
+  "0x463bb302ce650a23d542afac73095d5b661e9b04685389da98aa1d528f238f8b:country": {
+    "proof": {
+      "proof": "zk-proof:country:08caf06b4137c3993a63dc20a3508d2e96f80244374f4c5ae6ebf5d556f2213d",
+      "commitment": "0x6af8fca10adc453888aa37c3c3773d1afd46dec1c7c5ea469fa7281ed8f401c7",
+      "statement": "country == France",
+      "timestamp": "2025-11-17T21:36:51.258Z",
+      "expiresAt": "2026-11-17T21:36:51.258Z"
+    },
+    "expiresAt": "2026-11-17T21:36:51.827Z"
+  },
+  "0x463bb302ce650a23d542afac73095d5b661e9b04685389da98aa1d528f238f8b:captcha": {
+    "proof": {
+      "proof": "zk-proof:captcha:27473c030245986ab7a8fe8a8eb17328027798e1e8f16c2a546fc1305169fb7a",
+      "commitment": "0x8c2c25a8a1285903d4a2165d9a9410451c3704014a3b2b6090bf4ae27968695d",
+      "statement": "captcha == passed",
+      "timestamp": "2025-11-17T21:38:33.503Z",
+      "expiresAt": "2026-11-17T21:38:33.503Z"
+    },
+    "expiresAt": "2026-11-17T21:38:33.481Z"
+  }
+}
