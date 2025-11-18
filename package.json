@@ -10,7 +10,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "bash scripts/fix-native-bindings.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
