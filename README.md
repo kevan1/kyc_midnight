@@ -1,377 +1,131 @@
-# ZK-KYC dApp
+# Midnight ZK-KYC: privacy-preserving KYC on Midnight
 
-> Privacy-preserving KYC verification on the Midnight Network using zero-knowledge proofs.
+> Users prove **identity, humanity and age (18+)** to a Midnight smart contract. Only commitments and proof references go on-chain. The underlying personal data is never published.
 
-**🏆 1st Place Winner** at the [Midnight Hackathon Buenos Aires](https://github.com/joacolinares/kyc-midnight) (August 2025, IOHK / Cardano Foundation) with team Blockenfy.
+This project is built on the Midnight Network.
 
----
+This repository is a follow-up rebuild (started November 2025) of a hackathon project: a Next.js dApp with a new Compact contract (`kyc-credentials`) and a bridge that lets other dApps consume KYC status. See [Origin / hackathon](#origin--hackathon).
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Problem & Solution](#problem--solution)
-- [How It Works](#how-it-works)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Contract Deployment](#contract-deployment)
-- [Features](#features)
-- [Status & Roadmap](#status--roadmap)
-- [License](#license)
+| | |
+|---|---|
+| **Companion repo** | [rwa-kyc-marketplace](https://github.com/kevan1/rwa-kyc-marketplace): an asset-tokenization marketplace (Cardano) that requires this KYC before it lets you buy |
+| **Live demo** | _Not deployed right now._ The Vercel builds fail and the old Railway deployment is gone. See [Deployment](#deployment) |
+| **Network** | Midnight **testnet-02** (contract deployed 2025-11-17) |
+| **Status** | Hackathon-grade prototype. See [Limitations](#limitations--honest-status) |
 
 ---
 
-## Overview
+## Origin / hackathon
 
-This dApp enables users to prove their identity attributes (age, country, liveness) using **zero-knowledge proofs** on the Midnight Network—without revealing underlying personal data. The system issues on-chain credentials backed by cryptographic commitments, allowing selective disclosure for compliance use cases.
+I contributed to the project that won **🥇 1st place at Midnight Hackathon Buenos Aires 2025** (August 23–24, 2025).
 
-This repository builds upon the [original hackathon codebase](https://github.com/joacolinares/kyc-midnight) developed by Kevin Anrique and team Blockenfy.
+- Original repo: [joacolinares/kyc-midnight](https://github.com/joacolinares/kyc-midnight)
+- My contributions (README, API reference): [kevan1/kyc-midnight-hackathon](https://github.com/kevan1/kyc-midnight-hackathon)
 
----
+This repository is my follow-up rebuild (November 2025), with a new Compact contract, credential flows and a cross-dApp bridge. Its companion marketplace is [kevan1/rwa-kyc-marketplace](https://github.com/kevan1/rwa-kyc-marketplace).
 
-## Problem & Solution
+## Why
 
-**Problem:**  
-Traditional KYC systems require users to share sensitive personal data (full name, date of birth, document scans) with every service provider, creating privacy risks and data silos.
+Centralised KYC providers cost a lot, and each one ends up holding a honeypot of passports and selfies. The idea is to verify eligibility (age, country, "is human") once, record a **commitment** of that result on Midnight, and let any dApp check it without seeing or storing the raw data.
 
-**Solution:**  
-ZK-KYC leverages zero-knowledge proofs to let users:
-- Prove they are **over 18** without revealing their exact age
-- Prove they are **from a specific country** without disclosing their full address
-- Prove they are **human** (liveness + CAPTCHA) without storing biometric data on-chain
+## Features (verified in code)
 
-All credentials are stored as cryptographic commitments on the Midnight blockchain, ensuring privacy while meeting regulatory requirements.
+- **Lace wallet connection (Midnight).** It detects `window.midnight.mnLace` (with fallbacks) and uses the wallet to balance, prove and submit transactions. An auth guard protects the app routes.
+- **Three credential flows**, each ending in an on-chain transaction:
+  - **Identity** (`/verify/identity`): pick a country and document type, then enter a document number. The number is checked against a per-country format pattern, and a multi-step verification animation follows. Calls the `registerIdentity` and `issueCountryCredential` circuits.
+  - **Human** (`/verify/human`): a camera liveness check (`getUserMedia`, with voice prompts through the Web Speech API) plus a 4-character CAPTCHA. Calls `recordHumanVerification`.
+  - **Age** (`/verify/age`): an over-18 / under-18 attestation, unlocked only after identity and human checks pass. Calls `issueAgeCredential`. The ledger stores only a commitment and a proof reference, never the age bracket.
+- **Credential wallet** (`/credentials`, `/credentials/[id]`): shows issued credentials, receipts and Midnight explorer links.
+- **Issuer portal** (`/issuer`): issue and revoke credentials (`revokeLastCredential`).
+- **Ledger hydration**: reads contract state through the Midnight indexer (`queryContractState`) and derives each wallet's KYC status.
+- **Cross-dApp bridge** (`/bridge?redirect=…`): an external app sends the user here. Once identity, age and human credentials are all on-chain, the user is redirected back with the KYC result.
+- **Verifier API** with a CORS allow-list for partner apps:
+  - `GET /api/kyc/status?wallet=`: on-chain credential status
+  - `POST /api/kyc/verify-proof`: checks age, country and CAPTCHA proof references against on-chain commitments
+  - `POST /api/kyc/store-proof`: server-side proof storage (`data/proofs.json`)
+  - `GET /api/midnight/zk-config?circuit=`: serves compiled prover/verifier keys and ZKIR to the browser
+- **Mint demo** (`/mint`, `/api/mint`): mints Cardano property tokens through Mesh SDK and Lace. This was carried over from the companion tokenization app.
 
----
-
-## How It Works
+## Architecture
 
 ```mermaid
-graph TD
-    A[User] -->|Connects| B[Midnight Wallet]
-    B -->|Authenticates| C[ZK-KYC dApp]
-    C -->|1. Submit Identity Data| D[Client-Side ZK Proof Generation]
-    D -->|2. Generate Commitment| E[Cryptographic Hash]
-    E -->|3. Issue Credential| F[Midnight Smart Contract]
-    F -->|4. Store Commitment| G[Midnight Blockchain]
-    C -->|5. Verify Proof| H[Proof Verification]
-    H -->|6. Selective Disclosure| I[Verifier/dApp]
-    I -->|Checks On-Chain| G
-    
-    style F fill:#15DACC,stroke:#0A0A1F,stroke-width:2px
-    style G fill:#7B3FF2,stroke:#0A0A1F,stroke-width:2px
-    style D fill:#4A90E2,stroke:#0A0A1F,stroke-width:2px
+flowchart LR
+  U[User + Lace wallet] -->|verify identity / human / age| APP[Next.js 16 dApp]
+  APP -->|prove circuit call| PS[Midnight proof server]
+  APP -->|balance · prove · submit| LACE[Lace Midnight API]
+  LACE --> MN[(Midnight testnet<br/>kyc-credentials contract)]
+  APP -->|queryContractState| IDX[Midnight indexer GraphQL]
+  IDX --> MN
+  APP -->|proof refs| STORE[(data/proofs.json)]
+  MKT[Partner dApp<br/>e.g. rwa-kyc-marketplace] -->|/bridge redirect| APP
+  MKT -->|GET /api/kyc/status<br/>POST /api/kyc/verify-proof| APP
 ```
 
-### Workflow
+**Contract** (`contracts/kyc_credentials/contracts/kyc-credentials.compact`): ledger fields hold JSON maps of commitments, proof references and issuers for identity, age, country and human credentials, plus a revocation registry. The circuits are `registerIdentity`, `issueAgeCredential`, `issueCountryCredential`, `recordHumanVerification` and `revokeLastCredential`. A `create-mn-app` based toolkit in `contracts/kyc_credentials/src` handles deploy, CLI, balance and health checks.
 
-1. **Wallet Connection:** User connects their Midnight wallet to the dApp
-2. **Identity Submission:** User provides identity attributes (age bracket, country, liveness)
-3. **ZK Proof Generation:** Client-side proof generation creates cryptographic commitments
-4. **On-Chain Credential Issuance:** Smart contract stores commitments (not raw data) on Midnight blockchain
-5. **Proof Verification:** Verifiers can check proofs without seeing underlying data
-6. **Selective Disclosure:** Users share only what's needed (e.g., "I am over 18")
+## Tech stack
 
----
+- **Frontend:** Next.js 16.0.0 (App Router, webpack with `syncWebAssembly`), React 19.2, TypeScript, Tailwind CSS 4, Radix UI / shadcn, Zustand, Sonner
+- **Midnight:** Compact (`compact compile +0.26.0`, `language_version 0.18`), `@midnight-ntwrk/midnight-js-*` 2.0.2, `compact-runtime` 0.9, `ledger` 4, `zswap` 4, `wallet-api` 5, Lace wallet
+- **Cardano (mint demo):** `@meshsdk/core` / `@meshsdk/transaction` 1.9 beta
 
-## Tech Stack
+## Getting started
 
-### Frontend
-- **Next.js** 16.0.0 (App Router)
-- **React** 19.2.0
-- **TypeScript** 5.x
-- **Tailwind CSS** 4.1.9 (with Radix UI components)
+Prerequisites: Node.js ≥ 20.9 (≥ 22 for the contract toolkit), pnpm ≥ 9, Docker (local proof server), the Compact compiler, and the Lace wallet with Midnight enabled.
 
-### Blockchain & ZK
-- **Midnight Network** (Cardano sidechain for privacy-preserving smart contracts)
-- **Midnight.js SDK** 2.0.2 (contracts, indexer, proof provider)
-- **Compact Language** 0.26.0 (ZK smart contract DSL)
-- **Midnight Wallet SDK** 5.0.0
-
-### State Management & Storage
-- **Zustand** (global state)
-- **Level DB** (contract private state)
-
----
-
-## Project Structure
-
-```
-zkkyc-dapp/
-├── app/                          # Next.js App Router
-│   ├── api/
-│   │   ├── kyc/                  # KYC API endpoints
-│   │   │   ├── status/           # Check on-chain credential status
-│   │   │   ├── verify-proof/     # Verify ZK proofs
-│   │   │   ├── store-proof/      # Store proofs server-side
-│   │   │   ├── age/              # Age verification flow
-│   │   │   ├── country/          # Country verification flow
-│   │   │   ├── human/            # Human verification flow
-│   │   │   ├── identity/         # Identity verification flow
-│   │   │   └── revoke/           # Credential revocation
-│   │   └── midnight-indexer/     # Midnight blockchain indexer
-│   ├── verify/
-│   │   ├── identity/             # Identity verification UI
-│   │   ├── age/                  # Age verification UI
-│   │   └── human/                # Human verification UI
-│   ├── credentials/              # View issued credentials
-│   └── page.tsx                  # Homepage (credential dashboard)
-├── components/
-│   ├── ui/                       # Reusable UI components (Radix-based)
-│   ├── credential-card.tsx       # Credential display component
-│   ├── auth-guard.tsx            # Wallet authentication guard
-│   └── navbar.tsx                # Navigation bar
-├── contracts/
-│   └── kyc_credentials/          # Midnight smart contract
-│       ├── contracts/
-│       │   └── kyc-credentials.compact  # Compact ZK contract
-│       ├── src/
-│       │   ├── deploy.ts         # Deployment script
-│       │   ├── contract-client.ts # Contract interaction client
-│       │   └── cli.ts            # CLI tool for contract ops
-│       └── package.json          # Contract dependencies
-├── lib/
-│   ├── midnight-client.ts        # Midnight SDK wrapper
-│   ├── zk-proof-utils.ts         # ZK proof generation/verification
-│   ├── blockchain-utils.ts       # On-chain interaction utilities
-│   ├── store.ts                  # Zustand state management
-│   ├── proof-store.ts            # Server-side proof storage
-│   └── types.ts                  # TypeScript types
-├── public/                       # Static assets
-├── .env.example                  # Environment variable template
-└── package.json                  # Root dependencies
+```bash
+pnpm install          # postinstall runs scripts/fix-native-bindings.sh (macOS quarantine fix; no-op elsewhere)
+cp .env.example .env.local
+pnpm dev              # http://localhost:3000
+pnpm build && pnpm start
 ```
 
----
+Deploy your own contract (optional; a testnet-02 address is in `contracts/kyc_credentials/deployment.json`):
 
-## Getting Started
+```bash
+cd contracts/kyc_credentials
+npm install
+npm run proof-server   # docker: midnightnetwork/proof-server on :6300
+npm run setup          # compile (Compact) → tsc → deploy; writes deployment.json
+npm run cli            # interact with the deployed contract
+```
 
-### Prerequisites
+`/api/midnight/zk-config` serves circuit keys from `contracts/kyc_credentials/contracts/managed/`. That folder is git-ignored, so run `npm run compile` before starting the app.
 
-- **Node.js** >= 20.9.0
-- **pnpm** >= 9.0.0
-- **Docker** (for local proof server, optional)
-- **Midnight Wallet** browser extension ([download here](https://midnight.network/wallet))
+### Environment variables (names only)
 
-### Installation
+| App (`.env.local`) | Purpose |
+|---|---|
+| `NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS` | deployed `kyc-credentials` contract |
+| `NEXT_PUBLIC_MIDNIGHT_INDEXER_HTTP`, `NEXT_PUBLIC_MIDNIGHT_INDEXER_WS` | indexer endpoints |
+| `NEXT_PUBLIC_MIDNIGHT_PROOF_SERVER` | proof server URL |
+| `NEXT_PUBLIC_MIDNIGHT_NETWORK_ID` | `TestNet` / `MainNet` |
+| `NEXT_PUBLIC_MIDNIGHT_EXPLORER_URL` | explorer links (optional) |
+| `NEXT_PUBLIC_ASSET_APP_URL`, `ASSET_APP_ORIGIN` | partner dApp origin(s) allowed by CORS |
 
-1. **Clone the repository:**
+| Contract toolkit (`contracts/kyc_credentials/.env`) | Purpose |
+|---|---|
+| `WALLET_SEED` | 64-hex deployer wallet seed (**never commit**) |
+| `MIDNIGHT_NETWORK`, `PROOF_SERVER_URL`, `CONTRACT_NAME` | deploy settings |
 
-   ```bash
-   git clone https://github.com/yourusername/zkkyc-dapp.git
-   cd zkkyc-dapp
-   ```
+## Deployment
 
-2. **Install dependencies:**
+- `railway.json` (Nixpacks) is included. The server writes proofs to local disk (`data/proofs.json`), so it needs a persistent Node host rather than serverless.
+- The Vercel projects `kyc-midnight` and `kyc-midnight-1rnc` are linked, but every production build so far has failed (the latest was on 2026-02-17).
 
-   ```bash
-   pnpm install
-   ```
+## Limitations / honest status
 
-   *Note: This runs a postinstall script (`scripts/fix-native-bindings.sh`) to fix Midnight SDK native bindings.*
+- **The "ZK proofs" for statements are placeholders.** `lib/zk-proof-utils.ts` produces hash-based *proof references* (`zk-proof:<type>:<hash>`). Real Midnight proofs are generated only for the contract-call transactions themselves. The Compact circuits store opaque JSON strings and do not yet enforce `age ≥ 18` or issuer authorisation inside the circuit.
+- **Identity, liveness and CAPTCHA checks are demo UX** (pattern checks and timers), not real document or biometric verification.
+- The country proof is hard-coded to `country == France` for the companion marketplace demo.
+- `typescript.ignoreBuildErrors` is enabled. It targets **testnet-02**, and the Midnight SDK versions are from 2025.
+- The `/bridge` redirect accepts any absolute URL. Restrict it to an allow-list before production.
 
-3. **Set up environment variables:**
+## Credits
 
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Edit `.env.local` and add your `NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS` (see [Contract Deployment](#contract-deployment) below).
-
-4. **Deploy the Midnight smart contract** (if not already deployed):
-
-   ```bash
-   cd contracts/kyc_credentials
-   npm install
-   npm run setup
-   ```
-
-   This compiles the Compact contract, builds TypeScript, and deploys to the Midnight testnet. The deployed contract address will be saved in `contracts/kyc_credentials/deployment.json`.
-
-   **Important:** Copy the `contractAddress` from `deployment.json` and add it to your `.env.local` as `NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS`.
-
-5. **Run the development server:**
-
-   ```bash
-   cd ../..  # Return to root directory
-   pnpm dev
-   ```
-
-   The app will be available at [http://localhost:3000](http://localhost:3000).
-
-### Known Issues
-
-- **Build Warnings:** The project sets `typescript.ignoreBuildErrors: true` in `next.config.mjs` due to some Midnight SDK type conflicts. This does not affect runtime behavior.
-- **WebAssembly:** The app requires `syncWebAssembly` support in webpack (configured in `next.config.mjs`).
-- **Proof Server:** ZK proof generation uses a remote proof server by default (`NEXT_PUBLIC_MIDNIGHT_PROOF_SERVER`). For local development, run `docker run -p 6300:6300 midnightnetwork/proof-server` and update the env var to `http://127.0.0.1:6300`.
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env.local` and configure the following:
-
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS` | ✅ | Deployed contract address on Midnight testnet | (none) |
-| `NEXT_PUBLIC_MIDNIGHT_INDEXER_HTTP` | ✅ | Midnight indexer HTTP endpoint | `https://indexer.testnet-02.midnight.network/api/v1/graphql` |
-| `NEXT_PUBLIC_MIDNIGHT_INDEXER_WS` | ✅ | Midnight indexer WebSocket endpoint | `wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws` |
-| `NEXT_PUBLIC_MIDNIGHT_PROOF_SERVER` | ✅ | ZK proof server URL | `https://lace-dev.proof-pub.stg.midnight.tools` |
-| `NEXT_PUBLIC_MIDNIGHT_NETWORK_ID` | ✅ | Network identifier | `TestNet` |
-| `NEXT_PUBLIC_MIDNIGHT_EXPLORER_URL` | ❌ | Block explorer URL (for tx links) | `https://explorer.testnet.midnight.network` |
-| `NEXT_PUBLIC_ASSET_APP_URL` | ❌ | Asset dApp URL (if integrating with another app) | (none) |
-| `ASSET_APP_ORIGIN` | ❌ | Asset dApp origin for CORS | (none) |
-
-**Contract Deployment Variables** (in `contracts/kyc_credentials/.env`):
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `WALLET_SEED` | 64-character wallet seed (auto-generated on first deploy) | (auto) |
-| `MIDNIGHT_NETWORK` | Network to deploy to | `testnet` |
-| `PROOF_SERVER_URL` | Proof server for contract deployment | `http://127.0.0.1:6300` |
-| `CONTRACT_NAME` | Contract name | `kyc-credentials` |
-
----
-
-## Contract Deployment
-
-The Midnight smart contract is written in **Compact** (a ZK-friendly DSL) and must be deployed before running the dApp.
-
-### Deploy to Testnet
-
-1. **Navigate to contract directory:**
-
-   ```bash
-   cd contracts/kyc_credentials
-   ```
-
-2. **Install dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-3. **Run setup (compile + build + deploy):**
-
-   ```bash
-   npm run setup
-   ```
-
-   This will:
-   - Compile `contracts/kyc-credentials.compact` to TypeScript bindings
-   - Build TypeScript to JavaScript
-   - Generate a wallet seed (saved in `.env`)
-   - Deploy the contract to the Midnight testnet
-   - Save deployment info to `deployment.json`
-
-4. **Get testnet tokens** (if deployment fails due to insufficient funds):
-   - Run `npm run check-balance` to see your wallet address
-   - Visit the [Midnight Faucet](https://midnight.network/test-faucet)
-   - Request testnet tokens for your address
-
-5. **Update dApp config:**
-   
-   Copy the `contractAddress` from `contracts/kyc_credentials/deployment.json` and add it to your root `.env.local`:
-
-   ```bash
-   NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS=<your-contract-address>
-   ```
-
-### Contract Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run setup` | Full setup: compile → build → deploy |
-| `npm run compile` | Compile Compact contract to TypeScript |
-| `npm run build` | Build TypeScript to JavaScript |
-| `npm run deploy` | Deploy contract to testnet |
-| `npm run cli` | Interactive CLI for contract operations |
-| `npm run check-balance` | Check wallet balance |
-| `npm run health-check` | Verify contract health on-chain |
-| `npm run reset` | Delete compiled artifacts and deployments |
-| `npm run clean` | Clean build artifacts |
-
----
-
-## Features
-
-### 🔐 Credential Types
-
-1. **Identity Verification**
-   - Full name and document type collection
-   - Country verification (stored as commitment)
-   - Issues two on-chain credentials: `Identity` + `Country`
-
-2. **Age Verification**
-   - Age bracket selection (Under 18 / Over 18)
-   - ZK proof generation for "Over 18" users (proves age ≥ 18 without revealing exact age)
-   - Issues `Age` credential with commitment
-
-3. **Human Verification**
-   - CAPTCHA challenge
-   - Liveness detection via camera
-   - Issues `Human` credential with commitment
-   - ZK proof proves CAPTCHA passed without revealing the actual result
-
-### 🔒 Privacy Features
-
-- **Zero-Knowledge Proofs:** All sensitive data (age, country, CAPTCHA result) is verified via ZK proofs
-- **On-Chain Commitments:** Only cryptographic hashes are stored on-chain, never raw data
-- **Selective Disclosure:** Users can prove specific attributes (e.g., "I am over 18") without revealing exact values
-- **Server-Side Proof Storage:** Proofs are stored off-chain and can be verified independently
-
-### 🎨 UI/UX
-
-- Modern glassmorphism design with dark theme
-- Animated backgrounds and smooth transitions
-- Responsive design for mobile/tablet/desktop
-- Type-specific color schemes for each credential type
-- Real-time wallet connection status
-
-<!-- TODO: Add screenshot of credential dashboard here -->
-
----
-
-## Status & Roadmap
-
-### Current Status
-
-✅ **Completed:**
-- Identity, Age, and Human verification flows
-- ZK proof generation and verification
-- On-chain credential issuance on Midnight testnet
-- Wallet integration (Midnight Wallet SDK)
-- Credential revocation
-- Basic credential dashboard
-
-### Roadmap
-
-Planned improvements:
-- [ ] Add credential expiry and renewal flows
-- [ ] Implement multi-verifier support (allow third-party verifiers)
-- [ ] Improve proof verification performance
-- [ ] Add credential sharing/export (QR codes)
-- [ ] Support additional document types (passport, driver's license)
-- [ ] Add audit logs for compliance
-- [ ] Deploy to Midnight mainnet
-
----
+- Commit history of this repository: Kevin Anrique ([@kevan1](https://github.com/kevan1)).
+- Original hackathon code: [joacolinares/kyc-midnight](https://github.com/joacolinares/kyc-midnight), based on Midnight's bulletin-board example.
 
 ## License
 
-This project is licensed under the **MIT License**.
-
----
-
-## Acknowledgments
-
-- **Team Blockenfy** for winning 1st place at the Midnight Hackathon Buenos Aires (August 2025)
-- [Midnight Network](https://midnight.network/) for the privacy-preserving blockchain infrastructure
-- [IOHK](https://iohk.io/) and [Cardano Foundation](https://cardanofoundation.org/) for supporting the hackathon
-- [Radix UI](https://www.radix-ui.com/) for accessible UI components
-- [Tailwind CSS](https://tailwindcss.com/) for utility-first styling
-
----
-
-**Built with 🌙 on the Midnight Network**
+No license has been chosen yet. Add one (for example Apache-2.0, as the upstream Midnight example uses) before inviting reuse.
