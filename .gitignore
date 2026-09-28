@@ -48,3 +48,6 @@ contracts/**/managed/
 *.temp
 text.txt
 
+
+# Midnight private-state store (contains signing keys; never commit)
+**/midnight-level-db/
